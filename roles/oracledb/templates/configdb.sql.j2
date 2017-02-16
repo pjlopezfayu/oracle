@@ -1,0 +1,111 @@
+{% if oracle_tbs_list is defined %}
+{% for tbs in oracle_tbs_list %}
+
+CREATE TABLESPACE {{ tbs.tbs_name }}
+    LOGGING
+    DATAFILE '{{ oracle_data_path }}/{{ oracle_sid }}/{{ tbs.tbs_name }}01.dbf' SIZE {{ tbs.tbs_size }} REUSE
+    EXTENT MANAGEMENT LOCAL SEGMENT SPACE MANAGEMENT AUTO
+/
+{% endfor %}
+{% endif %}
+
+{% if oracle_schema_list is defined %}
+
+CREATE OR REPLACE PROCEDURE myddl
+(p_ddl IN VARCHAR2) IS
+BEGIN
+EXECUTE IMMEDIATE p_ddl;
+END;
+/
+
+{% for sch in oracle_schema_list %}
+
+CREATE USER {{ sch.schema_name }}_owner PROFILE "DEFAULT"
+    IDENTIFIED BY owner{{ sch.schema_pass }} DEFAULT TABLESPACE {{ sch.schema_tbs  }}
+    TEMPORARY TABLESPACE "TEMP"
+    QUOTA UNLIMITED ON {{ sch.schema_tbs  }}
+    ACCOUNT UNLOCK
+/
+GRANT CONNECT TO {{ sch.schema_name }}_owner
+/
+
+CREATE USER {{ sch.schema_name }}_app PROFILE "DEFAULT"
+    IDENTIFIED BY app{{ sch.schema_pass }} DEFAULT TABLESPACE {{ sch.schema_tbs  }}
+    TEMPORARY TABLESPACE "TEMP"
+    QUOTA UNLIMITED ON {{ sch.schema_tbs  }}
+    ACCOUNT UNLOCK
+/
+GRANT CONNECT TO {{ sch.schema_name }}_app
+/
+
+CREATE USER {{ sch.schema_name }}_user PROFILE "DEFAULT"
+    IDENTIFIED BY user{{ sch.schema_pass }} DEFAULT TABLESPACE {{ sch.schema_tbs  }}
+    TEMPORARY TABLESPACE "TEMP"
+    QUOTA UNLIMITED ON {{ sch.schema_tbs  }}
+    ACCOUNT UNLOCK
+/
+GRANT CONNECT TO {{ sch.schema_name }}_user
+/
+
+CREATE OR REPLACE TRIGGER grants_{{ sch.schema_name }}_owner
+AFTER CREATE ON {{ sch.schema_name }}_owner.schema
+DECLARE
+l_jobno NUMBER;
+BEGIN
+IF ora_dict_obj_type = 'TABLE' THEN
+dbms_job.submit(l_jobno,'myddl(''CREATE SYNONYM {{ sch.schema_name }}_user.'||ora_dict_obj_name||' FOR '||ora_dict_obj_owner||'.'||ora_dict_obj_name||''');');
+dbms_job.submit(l_jobno,'myddl(''CREATE SYNONYM {{ sch.schema_name }}_app.'||ora_dict_obj_name||' FOR '||ora_dict_obj_owner||'.'||ora_dict_obj_name||''');');
+dbms_job.submit(l_jobno,'myddl(''GRANT SELECT ON '||ora_dict_obj_owner||'.'||ora_dict_obj_name||' TO {{ sch.schema_name }}_user'');');
+dbms_job.submit(l_jobno,'myddl(''GRANT SELECT, INSERT, DELETE, UPDATE ON '||ora_dict_obj_owner||'.'||ora_dict_obj_name||' TO {{ sch.schema_name }}_app'');');
+END IF;
+IF ora_dict_obj_type = 'VIEW' THEN
+dbms_job.submit(l_jobno,'myddl(''CREATE SYNONYM {{ sch.schema_name }}_user.'||ora_dict_obj_name||' FOR '||ora_dict_obj_owner||'.'||ora_dict_obj_name||''');');
+dbms_job.submit(l_jobno,'myddl(''CREATE SYNONYM {{ sch.schema_name }}_app.'||ora_dict_obj_name||' FOR '||ora_dict_obj_owner||'.'||ora_dict_obj_name||''');');
+dbms_job.submit(l_jobno,'myddl(''GRANT SELECT ON '||ora_dict_obj_owner||'.'||ora_dict_obj_name||' TO {{ sch.schema_name }}_user'');');
+dbms_job.submit(l_jobno,'myddl(''GRANT SELECT ON '||ora_dict_obj_owner||'.'||ora_dict_obj_name||' TO {{ sch.schema_name }}_app'');');
+END IF;
+IF ora_dict_obj_type = 'SEQUENCE' THEN
+dbms_job.submit(l_jobno,'myddl(''CREATE SYNONYM {{ sch.schema_name }}_app.'||ora_dict_obj_name||' FOR '||ora_dict_obj_owner||'.'||ora_dict_obj_name||''');');
+dbms_job.submit(l_jobno,'myddl(''GRANT SELECT ON '||ora_dict_obj_owner||'.'||ora_dict_obj_name||' TO {{ sch.schema_name }}_app'');');
+END IF;
+END;
+/
+
+{% endfor %}
+
+
+{% endif %}
+
+{% if oracle_monitor %}
+
+CREATE TABLESPACE MONITOR
+    LOGGING
+    DATAFILE '{{ oracle_data_path }}/{{ oracle_sid }}/MONITOR01.dbf' SIZE 25M REUSE
+    EXTENT MANAGEMENT LOCAL SEGMENT SPACE MANAGEMENT  AUTO
+/
+CREATE USER MONITOR PROFILE "DEFAULT"
+    IDENTIFIED BY monitor DEFAULT TABLESPACE MONITOR
+    TEMPORARY TABLESPACE "TEMP"
+    QUOTA UNLIMITED
+    ON "MONITOR"
+    ACCOUNT UNLOCK
+/
+GRANT CONNECT TO MONITOR
+/
+GRANT SELECT ON SYS.DBA_DATA_FILES TO MONITOR
+/
+GRANT SELECT ON SYS.DBA_FREE_SPACE TO MONITOR
+/
+GRANT SELECT ON SYS.DBA_OBJECTS TO MONITOR
+/
+GRANT SELECT ON SYS.DBA_RESUMABLE TO MONITOR
+/
+GRANT SELECT ON SYS.DBA_SEGMENTS TO MONITOR
+/
+GRANT SELECT ON SYS.DBA_TABLESPACES TO MONITOR
+/
+GRANT SELECT ON SYS.V_$ASM_DISKGROUP TO MONITOR
+/
+GRANT SELECT ON sys.v_$archived_log to MONITOR
+/
+{% endif %}

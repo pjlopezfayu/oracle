@@ -1,0 +1,11 @@
+# Create schemas
+
+ - name: Copy schema sql file
+   template: src=schema.sql.j2 dest=/tmp/schema.sql
+   become_user: "{{ oracle_user }}"
+
+ - name: Create schema
+   shell: '. ~/.bash_profile && {{ oracle_home }}/bin/sqlplus "/as sysdba" @/tmp/schema.sql > /tmp/schema.log'
+   become_user: "{{ oracle_user }}"
+
+

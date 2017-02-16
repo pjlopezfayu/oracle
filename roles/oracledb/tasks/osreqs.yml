@@ -1,0 +1,45 @@
+# Kernel params
+
+ - name: Change kernel parameters
+   sysctl: name="{{ item.key }}" value="{{ item.value }}" ignoreerrors=yes state=present
+   with_dict: "{{ oracle_kernel_params }}"
+
+# User limits
+
+ - name: Add oracle user limits
+   lineinfile: dest=/etc/security/limits.conf line='{{ oracle_user }} {{ item.limit }} {{ item.type}} {{ item.value }}' regexp='^{{ oracle_user }} {{ item.limit }} {{ item.type}}'
+   with_items:
+    - { limit: 'soft', type: nofile, value: '{{ oracle_soft_no_file }}' }
+    - { limit: 'hard', type: nofile, value: '{{ oracle_hard_no_file }}' }
+    - { limit: 'soft', type: nproc, value: '{{ oracle_soft_nproc }}' }
+    - { limit: 'hard', type: nproc, value: '{{ oracle_hard_nproc }}' }
+
+# Hosts file config
+
+
+ - name: Set IP address if service IP is not defined
+   set_fact: oracle_ip="{{ ansible_all_ipv4_addresses[0] }}"
+   when: oracle_ip is undefined
+
+ - name: Add entry to /etc/hosts
+   lineinfile: dest=/etc/hosts line='{{ oracle_ip }} {{ ansible_hostname }}'
+
+# Create data VG
+
+ - name: Create data VG
+   lvg: vg={{ oracle_datavg }} pvs={{ oracle_disks }}
+
+# Create Oracle software filesystem
+
+ - name: Create Oracle software volume
+   lvol: vg={{ oracle_systemvg }} lv=oracleenglv size={{ oracle_eng_size }}
+
+ - name: Format Oracle software volume
+   filesystem: fstype=ext4 dev=/dev/mapper/{{ oracle_systemvg }}-oracleenglv resizefs=yes opts="-m 1"
+
+ - name: Mount Oracle software filesystem
+   mount: name={{ oracle_eng_path }} src=/dev/mapper/{{ oracle_systemvg }}-oracleenglv fstype=ext4  dump='1' passno='2' state=mounted
+
+ - name: Assign permissions
+   file: path={{ oracle_eng_path }} owner={{ oracle_user }} group={{ oracle_group }} mode=0755
+

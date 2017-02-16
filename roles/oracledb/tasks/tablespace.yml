@@ -1,0 +1,11 @@
+# Create tablespaces
+
+ - name: Copy tablespace sql file
+   template: src=tablespace.sql.j2 dest=/tmp/tablespace.sql
+   become_user: "{{ oracle_user }}"
+
+ - name: Create tablespace
+   shell: '. ~/.bash_profile && {{ oracle_home }}/bin/sqlplus "/as sysdba" @/tmp/tablespace.sql > /tmp/tablespace.log'
+   become_user: "{{ oracle_user }}"
+
+

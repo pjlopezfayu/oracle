@@ -1,0 +1,26 @@
+# Create profile
+
+ - name: Create profile
+   lineinfile: dest='/home/{{ oracle_user }}/.bash_profile' line={{ item }}
+   with_items:
+    - "umask 022"
+    - "export ORACLE_BASE={{ oracle_base }}"
+    - "export ORACLE_HOME={{ oracle_home }}"
+    - "export ORACLE_SID={{ oracle_sid }}"
+    - "export LD_LIBRARY_PATH=$ORACLE_HOME/lib:$ORACLE_HOME/lib32"
+    - "export PATH=$PATH:$ORACLE_HOME/bin:$ORACLE_HOME/OPatch"
+    - "export TMP=/tmp"
+   become_user: "{{ oracle_user }}"
+
+# Init script
+
+ - name: Copy init oracle script to /etc/init.d
+   template: src=oracle_init.j2 dest=/etc/init.d/oracle mode=750
+
+ - name: Reload systemd daemon
+   systemd: daemon_reload=yes name=oracle
+   when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+
+ - name: Enable oracle script to run at startup
+   service: name=oracle enabled=yes
+

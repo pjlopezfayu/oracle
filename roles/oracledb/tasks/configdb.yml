@@ -1,0 +1,9 @@
+# Configure database
+
+ - name: Copy sql file
+   template: src=configdb.sql.j2 dest=/home/{{ oracle_user }}/configdb.sql mode=0600
+   become_user: "{{ oracle_user }}"
+
+ - name: Execute sql file
+   shell: '. ~/.bash_profile && {{ oracle_home }}/bin/sqlplus "/as sysdba" @/home/{{ oracle_user }}/configdb.sql > /home/{{ oracle_user }}/configdb.log'
+   become_user: "{{ oracle_user }}"

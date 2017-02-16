@@ -1,0 +1,45 @@
+---
+# tasks file for role-oracledb
+
+## System prerequisites
+
+# Packages
+
+ - include: packages.yml
+
+# Users and groups
+
+ - include: useros.yml
+
+# OS requirements
+
+ - include: osreqs.yml
+
+## Database installation
+
+ - name: Check if software is installed
+   stat: path={{ oracle_home }}
+   register: oraclehome
+
+ - include: installdb.yml
+   become: True
+   when: oraclehome.stat.exists == False
+
+# Post install config
+
+ - include: postinstalldb.yml
+
+# Data filesystems
+
+ - include: filesystems.yml
+
+# Create database
+
+ - include: createdb.yml
+   become: True
+
+# Configure database
+
+ - include: configdb.yml
+   become: True
+

@@ -1,0 +1,89 @@
+### Database installation
+
+# Check install files
+
+ - name: Check if installer exists
+   stat: path={{ oracle_install_folder }}/database
+   register: oracleinstall
+
+ - block:
+
+   # Create Oracle installer filesystem
+
+    - name: Create Oracle installer volume
+      lvol: vg={{ oracle_datavg }} lv=softoraclelv size=6g
+
+    - name: Format Oracle installer volume
+      filesystem: fstype=ext4 dev=/dev/mapper/{{ oracle_datavg }}-softoraclelv resizefs=yes opts="-m 1"
+
+    - name: Mount Oracle installer filesystem
+      mount: name={{ oracle_install_folder }} src=/dev/mapper/{{ oracle_datavg }}-softoraclelv fstype=ext4 state=mounted
+
+    - name: Assign permissions
+      file: path={{ oracle_install_folder }} owner={{ oracle_user }} group={{ oracle_group }} mode=0755
+ 
+  # Download and unzip
+
+    - name: Define installation files for SE
+      set_fact: oracle_installer_archives={{ oracle_installer_SE_archives }}
+      when: oracle_edition == 'SE'
+
+    - name: Define installation files for EE
+      set_fact: oracle_installer_archives={{ oracle_installer_EE_archives }}
+      when: oracle_edition == 'EE'
+
+    - name: Copy files
+      copy: src={{ oracle_installer_local_path }}/{{ item }} dest={{ oracle_install_folder }}/
+      with_items: '{{ oracle_installer_archives | default() }}'
+      become_user: "{{ oracle_user }}"
+      when: oracle_installer_local_path is defined
+
+    - name: Download files
+      get_url: url={{ oracle_installer_remote_path }}/{{ item }} dest={{ oracle_install_folder }}/ tmp_dest={{ oracle_install_folder }}
+      with_items: '{{ oracle_installer_archives | default() }}'
+      become_user: "{{ oracle_user }}"
+      when: oracle_installer_remote_path is defined
+
+    - name: Unzip files
+      command: 'unzip {{ oracle_install_folder }}/{{ item }} -d {{ oracle_install_folder }}/'
+      with_items: '{{ oracle_installer_archives | default() }}'
+      become_user: "{{ oracle_user }}"
+
+   when: oracleinstall.stat.exists == False
+
+# Execute installation
+
+ # Generate response file
+
+ - name: Generate the response file for software only installation
+   template: src=db_install.rsp.j2 dest=/home/{{ oracle_user }}/db_install.rsp mode=0600
+   become_user: "{{ oracle_user }}"
+
+ # Execute installer
+
+ - name: Install software
+   command: '{{ oracle_install_folder}}/database/runInstaller -silent -ignorePrereq -ignoreSysPrereqs -waitforcompletion -responseFile /home/{{ oracle_user }}/db_install.rsp'
+   become_user: "{{ oracle_user }}"
+
+ # Execute Inventory command as root
+
+ - name: Execute Inventory root command (orainstRoot.sh)
+   command: '{{ oracle_inventory }}/orainstRoot.sh'
+   args:
+     removes: '{{ oracle_inventory }}/orainstRoot.sh'
+   become_user: root
+
+ # Execute DB home command as root
+
+ - name: Execute DB home root command (root.sh)
+   command: '{{ oracle_home }}/root.sh'
+   become_user: root
+ 
+ # Remove installation
+
+ - name: Unmount Oracle installer filesystem
+   mount: name={{ oracle_install_folder }} src=/dev/mapper/{{ oracle_datavg }}-softoraclelv fstype=ext4 state=absent
+
+ - name: Remove Oracle installer volume
+   lvol: vg={{ oracle_datavg }} lv=softoraclelv state=absent force=yes
+

@@ -1,0 +1,132 @@
+---
+# defaults file for role-oracledb
+
+# Filesystem vars
+
+oracle_data_path: '/oracledata'
+oracle_data_size: '5g'
+oracle_fra_path: '/oraclefra'
+oracle_fra_size: '5g'
+oracle_sys_path: '/oraclesys'
+oracle_sys_size: '3g'
+oracle_eng_path: '/oracleeng'
+oracle_eng_size: '7g'
+
+oracle_datavg: 'datosvg'
+oracle_systemvg: 'rootvg'
+#oracle_disks: '/dev/xvdb'
+oracle_fs_list:
+ - { fs_vol: orasyslv, fs_mount: "{{ oracle_sys_path }}", fs_size: "{{ oracle_sys_size }}" }
+ - { fs_vol: oradatalv, fs_mount: "{{ oracle_data_path }}", fs_size: "{{ oracle_data_size }}" }
+ - { fs_vol: orafralv, fs_mount: "{{ oracle_fra_path }}", fs_size: "{{ oracle_fra_size }}" }
+
+
+# Database installation vars
+
+# Edition: EE = Enterprise | SE = Standard
+oracle_edition: 'SE'
+oracle_install_folder: '/softoracle'
+#oracle_installer_local_path: '/software_oracle'
+oracle_installer_remote_path: 'DEFINIR POR USUARIO'
+oracle_installer_EE_archives:
+ - 'linuxamd64_12102_database_1of2.zip'
+ - 'linuxamd64_12102_database_2of2.zip'
+oracle_installer_SE_archives:
+ - 'linuxamd64_12102_database_se2_1of2.zip'
+ - 'linuxamd64_12102_database_se2_2of2.zip'
+
+oracle_base: "{{ oracle_eng_path }}"
+oracle_install_version: '12.1.0'
+oracle_dbhome_name: 'dbhome_1'
+oracle_inventory: '{{ oracle_base }}/oraInventory'
+oracle_home: '{{ oracle_base }}/product/{{ oracle_install_version }}/{{ oracle_dbhome_name }}'
+oracle_dba_group: 'dba'
+
+
+# Database vars
+
+#oracle_sid: 'TEST'
+#oracle_pass: 'temporal'
+oracle_charset: 'AL32UTF8'
+oracle_memory: 40
+
+# Listener vars
+
+oracle_lsn_port: '1521'
+
+# Tablespace vars
+
+#oracle_tbs_list:
+
+# - { tbs_name: 'PRUEBA', tbs_size: '100M' }
+# - { tbs_name: 'PRUEBA2', tbs_size: '100M' }
+
+# Schema vars
+
+#oracle_schema_list:
+
+# - { schema_name: 'SCH1', schema_pass: 'temporal', schema_tbs: 'PRUEBA' }
+
+# Monitoring
+
+oracle_monitor: 'no'
+
+# OS users and groups
+
+oracle_user: 'oracle'
+oracle_user_pass: 'oracle'
+oracle_group: 'oinstall'
+oracle_groups:
+ - 'dba'
+
+# Packages
+
+oracle_packages_list:
+  - compat-libcap1
+  - compat-libstdc++-33
+  - gcc
+  - gcc-c++
+  - glibc
+  - glibc.i686
+  - glibc-devel
+  - glibc-devel.i686
+  - ksh
+  - libaio
+  - libaio.i686
+  - libaio-devel
+  - libaio-devel.i686
+  - libstdc++.i686
+  - libstdc++-devel
+  - libstdc++-devel.i686
+  - libXi
+  - libXi.i686
+  - libXtst
+  - libXtst.i686
+  - sysstat
+  - unixODBC
+  - unzip
+  # Maven
+  - python-lxml
+  - libxslt
+
+
+# Kernel params
+
+oracle_kernel_params:
+ kernel.sem: 250 32000 100 128
+ fs.file-max: 6815744
+ net.core.rmem_default: 262144
+ net.core.rmem_max: 4194304
+ net.core.wmem_default: 262144
+ net.core.wmem_max: 1048576
+ fs.aio-max-nr: 1048576
+ kernel.shmmni: 4096
+ net.ipv4.ip_local_port_range: 9000   65535
+
+# Oracle user limits
+
+oracle_soft_no_file: 4096
+oracle_hard_no_file: 65536
+oracle_soft_nproc: 2047
+oracle_hard_nproc: 16384
+

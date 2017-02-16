@@ -1,0 +1,32 @@
+# Create listener
+
+ - name: Copy listener response file
+   template: src=netca.rsp.j2 dest=/home/{{ oracle_user }}/netca.rsp mode=0600
+   become_user: "{{ oracle_user }}"
+
+ - name: Create listener using netca
+   command: '{{ oracle_home }}/bin/netca -silent -responseFile /home/{{ oracle_user }}/netca.rsp'
+   args:
+     creates: '{{ oracle_home }}/network/admin/listener.ora'
+   become_user: "{{ oracle_user }}"
+
+# Create database
+
+ - name: Copy response file for dbca
+   template: src=dbca.rsp.j2 dest=/home/{{ oracle_user }}/dbca.rsp mode=0600
+   become_user: "{{ oracle_user }}"
+
+ - name: Create database
+   command: '{{ oracle_home }}/bin/dbca -silent -responseFile /home/{{ oracle_user }}/dbca.rsp'
+   args:
+      creates: '{{ oracle_sys_path }}/{{ oracle_sid }}'
+   become_user: "{{ oracle_user }}"
+
+ - name: Create database directory
+   file: path={{ oracle_data_path }}/{{ oracle_sid }} state=directory mode=0750 owner={{ oracle_user }} group={{ oracle_group }}
+
+ - name: Change oratab
+   lineinfile: dest='/etc/oratab' regexp='^{{ oracle_sid }}:{{ oracle_home }}:N' line='{{ oracle_sid }}:{{ oracle_home }}:Y' backrefs=yes
+
+ - name: Check if database is started
+   service: name=oracle state=started
